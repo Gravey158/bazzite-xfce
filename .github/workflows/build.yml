@@ -15,8 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: bazzite-xfce
-  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE: ghcr.io/gravey158/bazzite-xfce
+  # rootful podman-Storage auf /mnt (grosszuegig), damit das ~14 GB Image passt
+  STORE: --root /mnt/containers --storage-driver overlay
 
 jobs:
   build:
@@ -28,36 +29,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Speicher auf dem Runner freiraeumen (Image ist ~14 GB)
+      - name: Speicher freiraeumen + podman sicherstellen
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
             /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
           sudo docker image prune --all --force || true
-          df -h /
+          sudo apt-get update -qq && sudo apt-get install -y -qq podman >/dev/null 2>&1 || true
+          sudo mkdir -p /mnt/containers
+          podman --version || sudo podman --version
+          df -h / /mnt
+
+      - name: Image bauen (rootful, wie lokal getestet)
+        run: |
+          sudo podman $STORE build \
+            --cap-add=all \
+            -t "$IMAGE:latest" \
+            -t "$IMAGE:${GITHUB_SHA}" \
+            -f ./Containerfile .
 
       - name: An ghcr anmelden
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Image bauen
-        id: build
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: ${{ env.IMAGE_NAME }}
-          tags: latest ${{ github.sha }}
-          containerfiles: ./Containerfile
-          oci: true
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Nach ghcr pushen
-        id: push
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build.outputs.image }}
-          tags: ${{ steps.build.outputs.tags }}
-          registry: ${{ env.IMAGE_REGISTRY }}
-
-      - name: Image-Referenz ausgeben
-        run: echo "Gepusht:${{ steps.push.outputs.registry-paths }}"
+        run: |
+          sudo podman $STORE push "$IMAGE:latest"
+          sudo podman $STORE push "$IMAGE:${GITHUB_SHA}"
+          echo "Gepusht: $IMAGE:latest"
