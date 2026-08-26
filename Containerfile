@@ -11,7 +11,12 @@ RUN rm -f /usr/share/backgrounds/default*.jxl \
 # (modesetting faellt auf nouveau zurueck). Wir ruesten xorg-x11-nvidia in EXAKT der
 # Version des im Base-Image gebackenen Kernelmoduls aus negativo17-lts nach (kein
 # Kernel-Rebuild, kein Treiber-Tausch). Dazu XFCE + LightDM (X11-Greeter) + flatpak-builder.
-RUN rpm-ostree install --enablerepo=fedora-nvidia-lts \
+#
+# negativo17-lts ist im Base-Image enabled=0 -> temporaer aktivieren, damit fedora+updates
+# +nvidia-lts GLEICHZEITIG aktiv sind (--enablerepo wuerde die anderen Repos deaktivieren),
+# danach wieder auf enabled=0 zuruecksetzen.
+RUN sed -i 's/^enabled=0/enabled=1/' /etc/yum.repos.d/negativo17-fedora-nvidia-lts.repo \
+ && rpm-ostree install \
       xorg-x11-nvidia \
       xorg-x11-server-Xorg xorg-x11-xinit \
       xfce4-session xfwm4 xfce4-panel xfdesktop xfce4-settings xfce4-terminal \
@@ -20,5 +25,6 @@ RUN rpm-ostree install --enablerepo=fedora-nvidia-lts \
       xfce4-screenshooter x11vnc arc-theme papirus-icon-theme feh \
       lightdm lightdm-gtk-greeter \
       flatpak-builder \
+ && sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/negativo17-fedora-nvidia-lts.repo \
  && rpm-ostree cleanup -m \
  && ostree container commit
