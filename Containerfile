@@ -12,5 +12,6 @@ RUN rpm-ostree install \
       Thunar thunar-volman xfce4-appfinder xfce4-whiskermenu-plugin xfce4-notifyd \
       xfce4-pulseaudio-plugin xfce4-power-manager network-manager-applet \
       xfce4-screenshooter xorg-x11-server-Xorg x11vnc arc-theme papirus-icon-theme feh \
+      flatpak-builder \
  && rpm-ostree cleanup -m \
  && ostree container commit
