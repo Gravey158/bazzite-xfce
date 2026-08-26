@@ -7,11 +7,18 @@ RUN rm -f /usr/share/backgrounds/default*.jxl \
           /usr/share/backgrounds/default*.png \
           /usr/share/backgrounds/default*.jpg 2>/dev/null || true
 
-RUN rpm-ostree install \
+# bazzite-nvidia ist Wayland-only und laesst den NVIDIA-Xorg-DDX weg -> Xorg crasht
+# (modesetting faellt auf nouveau zurueck). Wir ruesten xorg-x11-nvidia in EXAKT der
+# Version des im Base-Image gebackenen Kernelmoduls aus negativo17-lts nach (kein
+# Kernel-Rebuild, kein Treiber-Tausch). Dazu XFCE + LightDM (X11-Greeter) + flatpak-builder.
+RUN rpm-ostree install --enablerepo=fedora-nvidia-lts \
+      xorg-x11-nvidia \
+      xorg-x11-server-Xorg xorg-x11-xinit \
       xfce4-session xfwm4 xfce4-panel xfdesktop xfce4-settings xfce4-terminal \
       Thunar thunar-volman xfce4-appfinder xfce4-whiskermenu-plugin xfce4-notifyd \
       xfce4-pulseaudio-plugin xfce4-power-manager network-manager-applet \
-      xfce4-screenshooter xorg-x11-server-Xorg x11vnc arc-theme papirus-icon-theme feh \
+      xfce4-screenshooter x11vnc arc-theme papirus-icon-theme feh \
+      lightdm lightdm-gtk-greeter \
       flatpak-builder \
  && rpm-ostree cleanup -m \
  && ostree container commit
